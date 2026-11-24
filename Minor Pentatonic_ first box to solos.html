@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minor Pentatonic: first box to solos</title>
+<style>
+:root{color-scheme:dark;--bg:#111215;--p:#181a20;--p2:#242832;--ac:#f2a93b;--tx:#e8e4dc;--mu:#9aa0ad;--ln:#343a48;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:18px 14px 40px}
+h1{font:600 1.7rem/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px;color:#ffe9cc}
+h2{font:600 1.15rem/1.3 Georgia,serif;margin:0 0 8px;color:#ffe9cc}
+p{margin:0 0 10px;max-width:72ch}
+h3{font:600 1rem/1.3 Georgia,serif;margin:18px 0 6px;color:#ffe9cc}
+.note{color:var(--mu);font-size:.85rem}
+.sub{color:var(--mu);margin-bottom:14px}
+.panel{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.row>span{color:var(--mu);font-size:.85rem;min-width:62px}
+button,select{background:var(--p2);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:6px 11px;font:inherit;font-size:.9rem;cursor:pointer}
+button.on{background:var(--ac);color:#111215;border-color:var(--ac);font-weight:600}
+button:focus-visible,select:focus-visible{outline:2px solid #ffe9cc;outline-offset:2px}
+.neck{overflow-x:auto;border-radius:8px;border:3px solid #5a3a22;background:#222}
+.neck svg{display:block;min-width:820px;width:100%;height:auto}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+pre{background:#0c0d10;border:1px solid var(--ln);border-radius:8px;padding:10px;overflow-x:auto;font:14px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#ffe9cc}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+td,th{border-bottom:1px solid var(--ln);padding:5px 8px;text-align:left}
+tr.k{cursor:pointer}tr.k:hover,tr.sel{background:var(--p2)}
+ul{margin:0 0 10px;padding-left:20px;max-width:72ch}
+.key{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+</style></head><body><main>
+<h1>Minor pentatonic, from first box to solos</h1>
+<div class="sub" id="sub"></div>
+
+<div class="panel">
+ <div class="row"><span>Key</span><div id="keys" class="row" style="margin:0"></div></div>
+ <div class="row"><span>Position</span><div id="poss" class="row" style="margin:0"></div></div>
+ <div class="row"><span>Labels</span><button id="lab"></button><button id="nk"></button><button id="bl"></button>
+  <button id="pl">Play position</button></div>
+</div>
+
+<div class="neck"><svg id="fb" viewBox="0 0 1000 232" role="img" aria-label="Guitar fretboard"></svg></div>
+<p class="sub" style="margin-top:6px"><span class="key" style="background:#f2a93b"></span>root
+ <span class="key" style="background:#2d5f8f;margin-left:10px"></span>scale note
+ <span class="key" style="background:#c8372d;margin-left:10px"></span>blue note (&#9837;5)
+ &nbsp;High e is on top, low E at the bottom, as you see it playing.</p>
+
+<div class="tabs" id="tabs"></div>
+<div class="panel" id="lesson"></div>
+</main>
+<script>
+var N=['C','C#','D','Eb','E','F','F#','G','G#','A','Bb','B'],OP=[40,45,50,55,59,64],SN=['E','A','D','G','B','e'];
+var DG={0:'1',3:'\u266D3',5:'4',6:'\u266D5',7:'5',10:'\u266D7'};
+var TB=['Start here','Five positions','Every key','Make it sing','Advanced','Solo lab','Theory'];
+var S={k:9,pos:1,lab:'deg',neck:'maple',tab:0,blue:false,solo:null,durs:null,hl:null,bpm:90,style:'simple'};
+var ac=null,timers=[];
+function $(i){return document.getElementById(i)}
+function dd(m){return((m-S.k)%12+12)%12}
+function inS(m){var d=dd(m);return d===0||d===3||d===5||d===7||d===10}
+function sf(s){var a=[],f;for(f=0;f<=27;f++)if(inS(OP[s]+f))a.push(f);return a}
+function rootF(){return((S.k-4)%12+12)%12}
+function ePair(k){var L=sf(0),i=L.indexOf(rootF());return[L[i+k],L[i+k+1]]}
+function posNotes(k,offs){
+ var p=ePair(k),c=(p[0]+p[1])/2,out=[],s,j,o,L,best,bd,d,cc,t;
+ for(s=0;s<6;s++){L=sf(s);
+  for(j=0;j<offs.length;j++){cc=c+offs[j];if(cc<1||cc>21.5)continue;best=0;bd=99;
+   for(o=0;o<L.length-1;o++){d=Math.abs((L[o]+L[o+1])/2-cc);if(d<bd){bd=d;best=o}}
+   for(t=0;t<2;t++)if(L[best+t]<=22)out.push({s:s,f:L[best+t],m:OP[s]+L[best+t]})}}
+ if(!out.length&&offs.length===1&&offs[0]===0)return posNotes(k,[-12]);
+ return out}
+function uniq(a){a=a.slice().sort(function(x,y){return x.m-y.m||x.s-y.s});var r=[],i;
+ for(i=0;i<a.length;i++)if(!r.length||r[r.length-1].m!==a[i].m)r.push(a[i]);return r}
+function blueIn(lo,hi){var b=[],s,f;for(s=0;s<6;s++)for(f=lo;f<=hi;f++)if(dd(OP[s]+f)===6)b.push({s:s,f:f,m:OP[s]+f});return b}
+function span(k){var a=posNotes(k,[0]),lo=99,hi=0;a.forEach(function(n){lo=Math.min(lo,n.f);hi=Math.max(hi,n.f)});return[lo,hi]}
+
+/* ---------- fretboard ---------- */
+var L22=920/(1-Math.pow(2,-22/12));
+function fx(n){return 44+L22*(1-Math.pow(2,-n/12))}
+function cx(n){return n===0?24:(fx(n-1)+fx(n))/2}
+function cy(s){return 34+(5-s)*28}
+function dot(s,f,r,fill,txt,tc){
+ var x=cx(f),y=cy(s);
+ return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+fill+'" stroke="#0c0d10" stroke-opacity=".5"/>'+
+ (txt?'<text x="'+x+'" y="'+(y+4)+'" text-anchor="middle" font-size="'+(r>10?11:9)+'" font-weight="700" font-family="system-ui,sans-serif" fill="'+(tc||'#fff')+'">'+txt+'</text>':'')}
+function lbl(m){return S.lab==='deg'?DG[dd(m)]:N[((m%12)+12)%12]}
+function draw(){
+ var maple=S.neck==='maple',bg=maple?'#e6c887':'#3d2216',fr=maple?'#b3ae9f':'#cfc9b8',di=maple?'#2a2a2a':'#e8e0cc',sc=maple?'#6f6c62':'#d6d2c4';
+ var h='',n,s,i,x,mark=[3,5,7,9,15,17,19,21],hi=null,all=[],pn=[];
+ h+='<rect x="0" y="0" width="1000" height="232" fill="#1a1b20"/>';
+ h+='<rect x="44" y="14" width="'+(fx(22)-44)+'" height="180" fill="'+bg+'"/>';
+ for(i=0;i<22;i++)h+='<rect x="44" y="'+(18+i*8)+'" width="'+(fx(22)-44)+'" height="1" fill="#000" opacity=".07"/>';
+ for(n=1;n<=22;n++)h+='<rect x="'+(fx(n)-1.3)+'" y="14" width="2.6" height="180" fill="'+fr+'"/>';
+ h+='<rect x="40" y="12" width="6" height="184" fill="#f4efe0"/>';
+ mark.forEach(function(f){h+='<circle cx="'+cx(f)+'" cy="104" r="7" fill="'+di+'" opacity=".85"/>'});
+ h+='<circle cx="'+cx(12)+'" cy="76" r="7" fill="'+di+'" opacity=".85"/><circle cx="'+cx(12)+'" cy="132" r="7" fill="'+di+'" opacity=".85"/>';
+ for(s=0;s<6;s++)h+='<line x1="44" x2="'+fx(22)+'" y1="'+cy(s)+'" y2="'+cy(s)+'" stroke="'+sc+'" stroke-width="'+[2.8,2.2,1.7,1.2,.9,.7][s]+'"/>';
+ [3,5,7,9,12,15,17,19,21].forEach(function(f){h+='<text x="'+cx(f)+'" y="216" text-anchor="middle" font-size="11" fill="#9aa0ad" font-family="system-ui">'+f+'</text>'});
+ for(s=0;s<6;s++){h+='<text x="6" y="'+(cy(s)+4)+'" font-size="10" fill="#9aa0ad" font-family="system-ui">'+SN[s]+'</text>'}
+ for(s=0;s<6;s++)for(n=0;n<=22;n++)if(inS(OP[s]+n))all.push({s:s,f:n,m:OP[s]+n});
+ if(S.pos){pn=posNotes(S.pos-1,[-12,0,12]);
+  all.forEach(function(a){h+=dot(a.s,a.f,5,'#2d5f8f','').replace('stroke-opacity=".5"','stroke-opacity="0" opacity=".28"')})}
+ var show=S.pos?pn:all;
+ show.forEach(function(a){var root=dd(a.m)===0;h+=dot(a.s,a.f,11,root?'#f2a93b':'#2d5f8f',lbl(a.m),root?'#111215':'#fff')});
+ if(S.blue){var lo=0,hh=22;if(S.pos){var q=span(S.pos-1);lo=Math.max(0,q[0]-1);hh=q[1]+1}
+  blueIn(lo,hh).forEach(function(a){if(a.f<=22)h+=dot(a.s,a.f,10,'#c8372d',lbl(a.m))});
+  if(S.pos){var q2=span(S.pos-1);blueIn(Math.max(0,q2[0]+11),q2[1]+13).forEach(function(a){if(a.f<=22)h+=dot(a.s,a.f,10,'#c8372d',lbl(a.m))})}}
+ if(S.solo)S.solo.forEach(function(a,i){h+='<circle cx="'+cx(a.f)+'" cy="'+(cy(a.s)-14)+'" r="8" fill="#111215" stroke="#f2a93b"/><text x="'+cx(a.f)+'" y="'+(cy(a.s)-11)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#ffe9cc" font-family="system-ui">'+(i+1)+'</text>'});
+ if(S.hl)h+='<circle cx="'+cx(S.hl.f)+'" cy="'+cy(S.hl.s)+'" r="16" fill="none" stroke="#fff" stroke-width="3"/>';
+ $('fb').innerHTML=h;
+ var sp=S.pos?span(S.pos-1):null;
+ $('sub').textContent=N[S.k]+' minor pentatonic \u2013 '+(S.pos?'position '+S.pos+', frets '+sp[0]+'\u2013'+sp[1]:'all positions')+' \u2013 Fender-style 22-fret neck';
+ $('lab').textContent='Labels: '+(S.lab==='deg'?'scale degrees':'note names');
+ $('nk').textContent='Neck: '+(maple?'maple':'rosewood');
+ $('bl').textContent=(S.blue?'Hide':'Show')+' blue note';
+ $('bl').className=S.blue?'on':'';
+}
+
+/* ---------- audio (Karplus-Strong) ---------- */
+function pluck(m,t){
+ var f=440*Math.pow(2,(m-69)/12),sr=ac.sampleRate,n=Math.floor(sr*1.3),N2=Math.floor(sr/f),b=ac.createBuffer(1,n,sr),d=b.getChannelData(0),i,g=ac.createGain(),src=ac.createBufferSource();
+ for(i=0;i<N2;i++)d[i]=Math.random()*2-1;
+ for(i=N2;i<n;i++)d[i]=0.9965*0.5*(d[i-N2]+d[i-N2+1]);
+ g.gain.value=0.35;src.buffer=b;src.connect(g);g.connect(ac.destination);src.start(t)}
+function stopAll(){timers.forEach(clearTimeout);timers=[];S.hl=null}
+function playSeq(list,gaps){
+ if(!ac){var C=window.AudioContext||window.webkitAudioContext;if(!C)return;ac=new C()}
+ if(ac.resume)ac.resume();stopAll();
+ var t=0,t0=ac.currentTime+0.08;
+ list.forEach(function(n,i){
+  pluck(n.m,t0+t);
+  (function(nn,tt){timers.push(setTimeout(function(){S.hl=nn;draw()},tt*1000))})(n,t);
+  t+=gaps[i]});
+ timers.push(setTimeout(function(){S.hl=null;draw()},t*1000+200))}
+function playPos(){
+ var l=uniq(posNotes((S.pos||1)-1,[0])),up=l.concat(l.slice(0,-1).reverse()),g=up.map(function(){return 0.28});
+ playSeq(up,g)}
+
+/* ---------- solo generator ---------- */
+function rnd(n){return Math.floor(Math.random()*n)}
+function gen(){
+ var st=S.style,k=(S.pos||1)-1,L=posNotes(k,[0]),out=[],i,r,ri=[],b,lo=99,hi=0;
+ if(st==='two')L=L.concat(posNotes((k+1)%5,[0]));
+ L=uniq(L);
+ if(st==='blues'){L.forEach(function(n){lo=Math.min(lo,n.f);hi=Math.max(hi,n.f)});L=uniq(L.concat(blueIn(lo,hi)))}
+ L.forEach(function(n,j){if(dd(n.m)===0)ri.push(j)});
+ if(!ri.length)ri=[0];
+ i=ri[rnd(ri.length)];
+ if(st==='seq'){
+  var mo=[[0,1,2],[0,2,1,3],[2,1,0,1]][rnd(3)],base=rnd(Math.max(1,L.length-7)),j;
+  while(out.length<11){for(j=0;j<mo.length&&out.length<11;j++)out.push(L[Math.min(L.length-1,base+mo[j])]);base++;if(base>L.length-4)base=0}
+  i=base}
+ else{out.push(L[i]);
+  while(out.length<(st==='simple'?7:11)){r=Math.random();
+   i+=(r<.4?1:r<.8?-1:r<.9?2:-2)*(st==='two'&&Math.random()<.25?2:1);
+   i=Math.max(0,Math.min(L.length-1,i));out.push(L[i])}}
+ b=ri[0];ri.forEach(function(x){if(Math.abs(x-i)<Math.abs(b-i))b=x});
+ out.push(L[b]);
+ S.solo=out;S.durs=out.map(function(){return Math.random()<.25?2:1});S.durs[out.length-1]=4;
+ lesson();draw()}
+function tabText(){
+ var rows=['','','','','',''],i,s,f;
+ S.solo.forEach(function(n){for(s=0;s<6;s++){f=(s===n.s)?String(n.f):'';while(f.length<3)f+='-';rows[s]+=f}});
+ var o='';for(s=5;s>=0;s--)o+=SN[s]+'|-'+rows[s]+'|\n';return o}
+function playSolo(){
+ if(!S.solo)gen();
+ var g=60/S.bpm/2;playSeq(S.solo,S.durs.map(function(d){return d*g}))}
+
+/* ---------- lesson text ---------- */
+function rows12(){
+ var h='<table><tr><th>Key</th><th>Notes</th><th>Box 1 on the low E string</th></tr>',i,s,save=S.k,nt;
+ for(i=0;i<12;i++){var k=(i+9)%12;S.k=k;
+  nt=[0,3,5,7,10].map(function(d){return N[(k+d)%12]}).join(' ');
+  h+='<tr class="k'+(k===save?' sel':'')+'" data-k="'+k+'"><td>'+N[k]+' minor</td><td>'+nt+'</td><td>'+(rootF()?'frets '+rootF()+' and '+(rootF()+3):'open and fret 3')+'</td></tr>'}
+ S.k=save;return h+'</table>'}
+function theory(){
+ var k=S.k,nm=N[k],h='',nt=function(d){return N[(k+d)%12]},i;
+ var IV=[['1','0','Root','Home base. Start and finish phrases here.'],['\u266D3','3','Minor third','Defines the minor sound. Bending it toward the major 3rd gives the classic blues inflection.'],['4','5','Perfect fourth','Open and slightly unresolved. It leans down to the \u266D3 or up to the 5.'],['5','7','Perfect fifth','Strong and stable; the second-best resting note after the root.'],['\u266D7','10','Minor seventh','Bluesy, dominant and Dorian flavour. It pulls up to the root.']];
+ h+='<h2>Minor pentatonic: the complete theory</h2>';
+ h+='<h3>What it is</h3><p>A pentatonic scale has five notes per octave (Greek <i>penta</i>, five). The <b>minor pentatonic</b> is the five-note scale <b>1 \u266D3 4 5 \u266D7</b>. Variants of pentatonic scales turn up in folk and traditional music across the world; in blues, rock and soul it became the main improvising vocabulary of the electric guitar.</p>';
+ h+='<h3>How it is built</h3><p>Start from the natural minor scale (1 2 \u266D3 4 5 \u266D6 \u266D7) and remove the <b>2nd</b> and <b>\u266D6</b>. What remains has the step pattern <b>3 \u2013 2 \u2013 2 \u2013 3 \u2013 2</b> semitones: two minor thirds and three whole tones. There are no semitone steps and no tritone, so almost nothing clashes with a minor chord.</p>';
+ h+='<h3>The five notes in '+nm+' minor</h3><table><tr><th>Degree</th><th>Note</th><th>Semitones</th><th>Interval</th><th>Role</th></tr>';
+ IV.forEach(function(r){h+='<tr><td>'+r[0]+'</td><td><b>'+nt(+r[1])+'</b></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>'});
+ h+='</table>';
+ h+='<h3>Why it sounds so safe</h3><ul><li><b>Chord tones:</b> the root, \u266D3 and 5 form the minor triad; adding \u266D7 gives a minor 7th chord, and the 4 is its 11th. Every note belongs to a minor 7th (add 11) chord.</li><li><b>Stacked fourths:</b> the scale is five notes stacked in fourths ('+[7,0,5,10,3].map(nt).join(' \u2013 ')+'), which is also how guitar strings are tuned. The six open strings E A D G B e all belong to E minor pentatonic, which is why open-string shapes feel so natural.</li><li><b>Ambiguity:</b> with no 2nd or 6th, the scale does not say whether the music is Aeolian, Dorian or Phrygian, so it fits many minor-key settings.</li></ul>';
+ h+='<h3>Where it comes from: the pentatonic family</h3><p>Major and minor pentatonic share the same notes. '+nm+' minor pentatonic ('+[0,3,5,7,10].map(nt).join(' ')+') contains the same notes as <b>'+nt(3)+' major pentatonic</b>. Starting the five notes from each degree gives five modes:</p><table><tr><th>Mode</th><th>Name</th><th>Formula</th><th>Notes from '+nm+'</th></tr>';
+ [['1','Major pentatonic','1 2 3 5 6',[0,2,4,7,9]],['2','Suspended (Egyptian)','1 2 4 5 \u266D7',[0,2,5,7,10]],['3','Blues minor (Man Gong)','1 \u266D3 4 \u266D6 \u266D7',[0,3,5,8,10]],['4','Blues major','1 2 4 5 6',[0,2,5,7,9]],['5','Minor pentatonic','1 \u266D3 4 5 \u266D7',[0,3,5,7,10]]].forEach(function(m){h+='<tr><td>'+m[0]+'</td><td>'+m[1]+'</td><td>'+m[2]+'</td><td>'+m[3].map(nt).join(' ')+'</td></tr>'});
+ h+='</table><p class="note">Mode numbers count from the major pentatonic. Minor pentatonic is mode 5, so it is the major pentatonic starting on its 6th note.</p>';
+ h+='<h3>Which chords it fits</h3><p>Playing '+nm+' minor pentatonic over the chords of '+nm+' natural minor, here is what each note becomes against each chord.</p><table><tr><th>Chord</th><th>Notes become</th><th>Verdict</th></tr>';
+ var RL={0:'1',1:'\u266D9',2:'9',3:'\u266D3',4:'3',5:'4',6:'\u266D5',7:'5',8:'\u266D6',9:'6',10:'\u266D7',11:'7'};
+ [['i',0,'m','Home chord. Perfect fit.'],['\u266DIII',3,'','Acts as major pentatonic. Bright and very stable.'],['iv',5,'m','Works as a minor 11th sound. Smooth.'],['v',7,'m','Fine, with a darker \u266D6 colour.'],['\u266DVI',8,'','Rich major 7th and 6th colours. Beautiful.'],['\u266DVII',10,'','Usable; treat the 4th as a passing note.']].forEach(function(c){
+  var r=(k+c[1])%12,roles=[0,3,5,7,10].map(function(d){var x=((k+d-r)%12+12)%12,t=RL[x];if(x===5&&c[2]==='')t+='*';return t});
+  h+='<tr><td>'+c[0]+' ('+N[r]+c[2]+')</td><td>'+roles.join(' ')+'</td><td>'+c[3]+'</td></tr>'});
+ h+='</table><p class="note">* The 4th over a major chord leans against the chord\u2019s 3rd. Pass through it; do not rest on it.</p>';
+ h+='<h3>Over a major chord or a blues</h3><ul><li><b>Minor pentatonic on a dominant 7th:</b> over '+nm+'7 (or a 12-bar blues in '+nm+'), '+nm+' minor pentatonic is the standard sound. Its \u266D3 rubs against the chord\u2019s major 3rd, and that friction is the blues sound.</li><li><b>Blue third:</b> bend the \u266D3 up part of the way toward the major 3rd (about a quarter-tone) and hold it.</li><li><b>Major sound instead:</b> over a major key chord, play the minor pentatonic from the 6th degree, or equivalently major pentatonic from the root. Rule of thumb: start three frets <i>below</i> the major root for the same shape.</li></ul>';
+ h+='<h3>The blues scale</h3><p>Add the <b>\u266D5</b> ('+nt(6)+') between the 4 and 5 for a six-note blues scale: 1 \u266D3 4 \u266D5 5 \u266D7. Use it as a chromatic passing note (4 to \u266D5 to 5) and never as a resting note. Press \u201cShow blue note\u201d to see it in red on the neck.</p>';
+ h+='<h3>On the fretboard</h3><ul><li>The five boxes tile the neck without gaps; each box is the same five notes in a different place. The root appears twice in most boxes.</li><li>Each box lines up with one of the five CAGED chord shapes of the relative major, so chord shapes and scale shapes share territory.</li><li>Every shape is moveable: shift it along so a root lands on the new key\u2019s note.</li></ul>';
+ h+='<h3>How to use it, step by step</h3><ul><li><b>1. Find the key and the root.</b> Place the root on the low E or A string, then play in the box around it.</li><li><b>2. Choose one box</b> and stay in it for a whole chorus. Limits make better phrases.</li><li><b>3. Phrase like a singer.</b> Two to four notes, a breath, repeat with a variation.</li><li><b>4. Land on chord tones</b> (root, \u266D3, 5) on strong beats and use the rest as approach notes.</li><li><b>5. Add expression:</b> bends, slides, vibrato and hammer-ons carry more of the style than extra notes.</li><li><b>6. Develop it:</b> repeat a motif, move it up one scale step, then answer it with a lower phrase.</li><li><b>7. Change box</b> for the next chorus, and connect two boxes with a slide.</li></ul>';
+ h+='<h3>Common mistakes</h3><ul><li>Running the scale up and down. It sounds like an exercise; use short phrases instead.</li><li>Resting on the 4 or \u266D5. They are tension notes.</li><li>Playing all notes at the same volume and length. Vary rhythm and dynamics.</li><li>Staying in one box forever. Learn all five so you can follow the chords.</li></ul>';
+ h+='<h3>A practice plan</h3><ul><li><b>Week 1:</b> box 1 in one key, with a metronome at a slow tempo.</li><li><b>Week 2:</b> boxes 2 to 5, one per day, roots first.</li><li><b>Week 3:</b> three keys, same box shapes, each moved to a new root.</li><li><b>Week 4:</b> a 12-bar blues backing track, one box per chorus, then connect boxes.</li></ul>';
+ return h}
+function lesson(){
+ var t=S.tab,h='',nm=N[S.k],i,sp;
+ $('tabs').innerHTML=TB.map(function(x,j){return '<button data-t="'+j+'" class="'+(j===t?'on':'')+'">'+x+'</button>'}).join('');
+ if(t===0)h='<h2>The five notes</h2><p>Minor pentatonic is the five-note scale behind most rock and blues solos. Taking the minor scale and removing the 2nd and ♭6 leaves: <b>1, ♭3, 4, 5, ♭7</b>. In '+nm+' minor that is <b>'+[0,3,5,7,10].map(function(d){return N[(S.k+d)%12]}).join(', ')+'</b>.</p><p><b>Your first 15 minutes</b></p><ul><li>Look at position 1 above. The amber dots are your root; start and finish phrases there.</li><li>Press Play position. Say the degree out loud as it plays.</li><li>Play it up and down slowly with one finger per fret: index on the first fret of the box, ring or pinky on the far one.</li><li>Play only the notes on one string pair, then make up a four-note phrase that ends on a root.</li></ul><p>Tip: switch labels to note names to learn which notes you are playing, and back to degrees to see the shape.</p>';
+ else if(t===1){h='<h2>Five boxes cover the whole neck</h2><p>Each box is a fingering of the same five notes. Box 2 begins where box 1 ends, and so on, until box 5 hands you back to box 1 an octave higher. Learn the roots in each box so you can always find home.</p><table><tr><th>Position</th><th>Frets</th><th>Low E pair</th></tr>';
+  for(i=0;i<5;i++){sp=span(i);var p=ePair(i);h+='<tr><td><button data-p="'+(i+1)+'" class="'+(S.pos===i+1?'on':'')+'">Box '+(i+1)+'</button></td><td>'+sp[0]+'\u2013'+sp[1]+'</td><td>'+p[0]+' and '+p[1]+'</td></tr>'}
+  h+='</table><p style="margin-top:10px">Pick “All” above to see how the boxes interlock. Spend a week on each box: scale up and down, then phrases ending on the root, then a backing track.</p>'}
+ else if(t===2)h='<h2>Every key</h2><p>The shapes never change; they slide. Find the root note on the low E string, and that fret is where box 1 starts. Tap a row to move the fretboard to that key.</p>'+rows12();
+ else if(t===3)h='<h2>Make it sing</h2><p>The shape is only the start. These five habits turn the scale into a voice:</p><ul><li><b>Bend</b> the ♭7 up to the root, or the 4 up to the 5, until it matches the target pitch.</li><li><b>Slide</b> into a note from two frets below, and <b>vibrato</b> long notes.</li><li><b>Hammer-on and pull-off</b> between the two notes on a string for fast, smooth runs.</li><li><b>Blue note:</b> the ♭5 sits between the 4 and the 5. Use it as a quick passing note and never rest on it. Press “Show blue note” above to see where it lives.</li><li><b>Call and response:</b> play a short phrase, rest for two beats, answer it.</li></ul>';
+ else if(t===4)h='<h2>Advanced ideas</h2><ul><li><b>Connect boxes:</b> start a phrase in one box and finish it in the next, sliding on one string. Practise with every pair of neighbouring boxes.</li><li><b>Target chord tones:</b> over '+nm+'m, land on '+N[S.k]+', '+N[(S.k+3)%12]+' or '+N[(S.k+7)%12]+' on strong beats; use the other notes to approach them.</li><li><b>Relative major:</b> '+nm+' minor pentatonic holds the same notes as '+N[(S.k+3)%12]+' major pentatonic. Resolve to '+N[(S.k+3)%12]+' for a brighter sound.</li><li><b>Sequences:</b> play a three- or four-note pattern, move it up one scale step, repeat. Try the Solo lab’s “Sequence” style.</li><li><b>Add colour:</b> add the 2nd ('+N[(S.k+2)%12]+') and 6th ('+N[(S.k+9)%12]+') for a Dorian sound over a minor 7th chord.</li></ul>';
+ else if(t===6)h=theory();
+ else{h='<h2>Solo lab</h2><p>Generate a phrase inside the selected position, hear it, and read it as tab. The numbered markers above show the order of the notes.</p><div class="row"><span>Style</span><select id="st"><option value="simple">Simple: stepwise, 8 notes</option><option value="blues">Blues: with blue note</option><option value="seq">Sequence: repeating motif</option><option value="two">Two boxes: wider range</option></select><span>Tempo</span><input id="bp" type="range" min="50" max="140" value="'+S.bpm+'"><b id="bv">'+S.bpm+'</b></div><div class="row"><button id="gn" class="on">Generate</button><button id="ps">Play solo</button><button id="sp">Stop</button></div>';
+  if(S.solo)h+='<pre>'+tabText()+'</pre>';h+='<p>Played at eighth-note spacing, ending on a long root. Generate until one catches your ear, then change it by hand.</p>'}
+ $('lesson').innerHTML=h;
+ if($('st')){$('st').value=S.style;$('st').onchange=function(){S.style=this.value;S.solo=null;lesson();draw()};
+  $('bp').oninput=function(){S.bpm=+this.value;$('bv').textContent=this.value};
+  $('gn').onclick=gen;$('ps').onclick=playSolo;$('sp').onclick=function(){stopAll();draw()}}
+}
+
+/* ---------- wiring ---------- */
+function ui(){
+ $('keys').innerHTML=[9,10,11,0,1,2,3,4,5,6,7,8].map(function(k){return '<button data-k="'+k+'" class="'+(k===S.k?'on':'')+'">'+N[k]+'m</button>'}).join('');
+ $('poss').innerHTML=['All',1,2,3,4,5].map(function(p,i){return '<button data-p="'+i+'" class="'+(i===S.pos?'on':'')+'">'+p+'</button>'}).join('')}
+document.addEventListener('click',function(e){
+ var b=e.target.closest('button,tr.k');if(!b)return;
+ if(b.getAttribute('data-k')!==null){S.k=+b.getAttribute('data-k');S.solo=null;stopAll()}
+ else if(b.getAttribute('data-p')!==null)S.pos=+b.getAttribute('data-p');
+ else if(b.getAttribute('data-t')!==null){S.tab=+b.getAttribute('data-t');if(S.tab===0){S.pos=1;S.lab='deg'}}
+ else if(b.id==='lab')S.lab=S.lab==='deg'?'note':'deg';
+ else if(b.id==='nk')S.neck=S.neck==='maple'?'rose':'maple';
+ else if(b.id==='bl')S.blue=!S.blue;
+ else if(b.id==='pl'){playPos();return}
+ else return;
+ ui();lesson();draw()});
+ui();lesson();draw();
+</script></body></html>
